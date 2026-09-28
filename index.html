@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FocusCraft — 專注誌</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,600;9..144,1,400&family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="paper-grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">
+      <div class="brand-mark">Fc</div>
+      <div class="brand-text">
+        <h1>FocusCraft <span class="brand-sub">專注誌</span></h1>
+        <p>大學生生活與戒斷指南 — <span id="brand-week-label">本週</span></p>
+      </div>
+    </div>
+    <div class="masthead-meta">
+      <div class="level-block">
+        <div class="level-badge" id="player-level">LV 1</div>
+        <div class="xp-block">
+          <div class="xp-row"><span>專注經驗值</span><span id="xp-text">0 / 100</span></div>
+          <div class="xp-track"><div class="xp-fill" id="xp-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="streak-block" title="連續有完成任務的天數">
+        <span class="streak-num"><span id="streak-count">0</span></span>
+        <span class="streak-label">天專注<br>連勝</span>
+      </div>
+      <button class="sos-btn settings-btn" onclick="openSettings()">
+        <span class="sos-dot"></span>
+        設定
+      </button>
+      <div class="user-block">
+        <button class="user-btn" id="login-btn" onclick="signInWithGoogle()">登入同步</button>
+        <div class="user-chip" id="user-chip" style="display:none">
+          <img id="user-avatar" class="avatar" alt="avatar" />
+          <span id="user-email" class="user-email"></span>
+        </div>
+        <span class="sync-dot" id="sync-dot" data-s="off" title="未登入：只存這台裝置"></span>
+      </div>
+    </div>
+  </div>
+  <div class="rule-double"></div>
+</header>
+
+<main class="layout" id="layout">
+  <!-- 左：星期 + 時程 -->
+  <section class="journal">
+    <div class="week-bar">
+      <button class="week-arrow" onclick="shiftWeek(-1)" aria-label="上一週">‹</button>
+      <button class="week-label" onclick="goThisWeek()" id="week-label" title="回到本週">本週</button>
+      <button class="week-arrow" onclick="shiftWeek(1)" aria-label="下一週">›</button>
+      <input type="date" id="date-picker" class="date-picker" onchange="jumpToDate(this.value)" aria-label="選擇日期" />
+    </div>
+    <nav class="week-nav" aria-label="選擇日期">
+      <button class="day-btn" id="btn-Mon" onclick="selectWeekday('Mon')"><span class="day-date" id="date-Mon">--</span><span class="day-zh">一</span><span class="day-en">Mon</span></button>
+      <button class="day-btn" id="btn-Tue" onclick="selectWeekday('Tue')"><span class="day-date" id="date-Tue">--</span><span class="day-zh">二</span><span class="day-en">Tue</span></button>
+      <button class="day-btn" id="btn-Wed" onclick="selectWeekday('Wed')"><span class="day-date" id="date-Wed">--</span><span class="day-zh">三</span><span class="day-en">Wed</span></button>
+      <button class="day-btn" id="btn-Thu" onclick="selectWeekday('Thu')"><span class="day-date" id="date-Thu">--</span><span class="day-zh">四</span><span class="day-en">Thu</span></button>
+      <button class="day-btn" id="btn-Fri" onclick="selectWeekday('Fri')"><span class="day-date" id="date-Fri">--</span><span class="day-zh">五</span><span class="day-en">Fri</span></button>
+      <button class="day-btn" id="btn-Sat" onclick="selectWeekday('Sat')"><span class="day-date" id="date-Sat">--</span><span class="day-zh">六</span><span class="day-en">Sat</span></button>
+      <button class="day-btn" id="btn-Sun" onclick="selectWeekday('Sun')"><span class="day-date" id="date-Sun">--</span><span class="day-zh">日</span><span class="day-en">Sun</span></button>
+    </nav>
+
+    <article class="timeline-wrap">
+      <div class="section-head">
+        <h3>時程核取清單</h3>
+        <span class="section-actions">
+          <span id="hidden-hint" class="hidden-hint"></span>
+          <button class="link-btn" id="restore-btn" onclick="restoreHidden()" style="display:none">還原略過</button>
+          <button class="link-btn strong" onclick="openNewTaskForm()">＋ 新增任務</button>
+        </span>
+      </div>
+      <form id="task-form" class="task-form" style="display:none" onsubmit="return submitCustomTask(event)">
+        <input id="f-title" class="f-input f-title" placeholder="任務名稱，例如：補寫經濟學筆記" maxlength="60" required />
+        <div class="f-row">
+          <input id="f-time" class="f-input" placeholder="時間，例如 14:00 - 15:00" maxlength="20" />
+          <select id="f-cat" class="f-input">
+            <option value="focus">專注</option>
+            <option value="class">課業</option>
+            <option value="study">研讀</option>
+            <option value="habit">習慣</option>
+            <option value="msg">訊息</option>
+            <option value="game">手遊</option>
+            <option value="sleep">睡眠</option>
+            <option value="orchestra">樂團</option>
+          </select>
+          <select id="f-xp" class="f-input">
+            <option value="10">+10 XP</option>
+            <option value="15" selected>+15 XP</option>
+            <option value="20">+20 XP</option>
+            <option value="25">+25 XP</option>
+            <option value="30">+30 XP</option>
+            <option value="40">+40 XP</option>
+          </select>
+        </div>
+        <div class="f-row">
+          <label class="f-check" id="f-repeat-label"><input type="checkbox" id="f-repeat" checked /> 每週這天都出現</label>
+          <span style="flex:1"></span>
+          <button type="button" class="ghost-btn sm" id="f-restore" style="display:none" onclick="restoreTemplate()">恢復模板</button>
+          <button type="button" class="ghost-btn sm" onclick="cancelTaskForm()">取消</button>
+          <button type="submit" class="primary-btn sm" id="f-submit">加入</button>
+        </div>
+      </form>
+      <div id="tasks-container" class="timeline"></div>
+    </article>
+  </section>
+
+  <!-- 右：今日焦點 + 側欄 -->
+  <aside class="aside">
+    <article class="cover" data-card="cover">
+      <div class="cover-kicker">
+        <span class="kicker-tag" id="current-day-tag">星期一</span>
+        <span class="kicker-line"></span>
+        <span class="kicker-note" id="day-highlight-note">紮實上課與運動日</span>
+      </div>
+      <div class="cover-main">
+        <h2 id="day-title">今日任務與<br>專注時程</h2>
+        <div class="progress-card">
+          <div class="progress-top">
+            <span id="cover-date-label">今日完成度</span>
+            <span class="progress-pct"><span id="daily-progress-percent">0</span>%</span>
+          </div>
+          <svg class="ring" viewBox="0 0 64 64" width="76" height="76">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--line)" stroke-width="3"/>
+            <circle id="progress-circle" cx="32" cy="32" r="26" fill="none" stroke="var(--ink)" stroke-width="3"
+              stroke-linecap="round" stroke-dasharray="163.3" stroke-dashoffset="163.3"/>
+          </svg>
+          <p class="progress-hint">勾選即累積經驗值</p>
+        </div>
+      </div>
+      <div class="sleep-rule">
+        <span class="sleep-rule-label">夜間守則</span>
+        <span>22:00 準時熄燈 — 睡眠是專注力的修復基石</span>
+        <span class="sleep-rule-moon">☾</span>
+      </div>
+    </article>
+
+    <section class="card" data-card="detox">
+      <div class="card-head"><span class="card-no">01</span><h3>解癮替代方案</h3></div>
+      <p class="card-desc">手指想點開 IG 或 Threads 時，切換到低刺激的腦力替代品。</p>
+      <button class="urge-entry" onclick="openUrgeModal()">想滑社群？先停三分鐘 →</button>
+      <div class="alt-grid">
+        <button class="alt-btn" onclick="launchMiniGame('sudoku')">
+          <span class="alt-title">數獨</span>
+          <span class="alt-sub">邏輯 · 單點專注</span>
+        </button>
+        <button class="alt-btn" onclick="launchMiniGame('wordsearch')">
+          <span class="alt-title">尋字</span>
+          <span class="alt-sub">英文 · 字母海找單字</span>
+        </button>
+      </div>
+      <div class="mini-row">
+        <div class="mini"><strong>小說閱讀</strong><span>放鬆不設限</span></div>
+        <div class="mini"><strong>Duolingo</strong><span>早上 7 點</span></div>
+      </div>
+    </section>
+
+    <section class="card" data-card="rules">
+      <div class="card-head"><span class="card-no">02</span><h3>個人關鍵機制</h3></div>
+      <ul class="rules">
+        <li><strong>20:30 後不排動腦</strong><span>20:30–21:30 固定放鬆：小說、動漫學日文，拒絕大腦過載。</span></li>
+        <li><strong>假日做遊戲</strong><span>僅週六、日使用電腦，夜間場 20:30 準時喊卡。</span></li>
+        <li><strong>額外日文</strong><span>週一至週六日間排進階日文，晚間搭配動漫輕體驗。</span></li>
+        <li><strong>PM × 心諮先修</strong><span>穿插於平日空檔，養成產品思維與諮商基礎。</span></li>
+        <li><strong>集中回訊</strong><span>12:10、17:30、21:30 統一處理訊息，遠離即時焦慮。</span></li>
+      </ul>
+    </section>
+
+    <section class="card next-badge-card" data-card="nextbadge">
+      <div class="card-head"><span class="card-no">03</span><h3>下一枚勳章</h3><button class="link-btn" onclick="openSettings('badges')">成就館 →</button></div>
+      <div id="next-badge" class="next-badge"></div>
+    </section>
+
+    <p class="colophon">FocusCraft · 以紙與墨的節奏，對抗演算法。<br>進度會自動保存在此瀏覽器。</p>
+  </aside>
+</main>
+
+<!-- 急救 Modal -->
+<div id="urge-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" onclick="closeUrgeModal()"></div>
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeUrgeModal()" aria-label="關閉">×</button>
+    <p class="modal-kicker">急救對策 · 三分鐘</p>
+    <h3>無意識滑動戒斷引導</h3>
+    <p class="modal-sub">用一道小題取代 IG / Threads 的多巴胺。</p>
+    <div class="tabs">
+      <button id="tab-sudoku" onclick="switchModalTab('sudoku')">數獨</button>
+      <button id="tab-wordsearch" onclick="switchModalTab('wordsearch')">尋字遊戲</button>
+      <button id="tab-breath" onclick="switchModalTab('breath')">4-7-8 呼吸</button>
+    </div>
+    <div id="game-canvas-area" class="game-area"></div>
+    <div class="modal-foot">
+      <span>完成一局可獲得 +20 XP</span>
+      <button class="primary-btn" onclick="completeGameReward()">完成並回歸正軌 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定 Modal -->
+<div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" onclick="closeSettings()"></div>
+  <div class="modal-sheet wide">
+    <button class="modal-close" onclick="closeSettings()" aria-label="關閉">×</button>
+    <p class="modal-kicker">設定 · Settings</p>
+    <h3>自訂你的專注誌</h3>
+    <div class="tabs">
+      <button id="stab-appear" onclick="switchSettingsTab('appear')">外觀</button>
+      <button id="stab-layout" onclick="switchSettingsTab('layout')">版面</button>
+      <button id="stab-badges" onclick="switchSettingsTab('badges')">成就館</button>
+      <button id="stab-data" onclick="switchSettingsTab('data')">資料</button>
+    </div>
+
+    <div id="s-pane-appear" class="s-pane">
+      <h4>墨色 <span>accent</span></h4>
+      <div class="swatches" id="accent-swatches">
+        <button data-accent="#b03a24" style="--sw:#b03a24" onclick="setAccent('#b03a24',this)" title="朱柿">朱</button>
+        <button data-accent="#1d1b16" style="--sw:#1d1b16" onclick="setAccent('#1d1b16',this)" title="墨黑">墨</button>
+        <button data-accent="#4d5d3f" style="--sw:#4d5d3f" onclick="setAccent('#4d5d3f',this)" title="苔綠">苔</button>
+        <button data-accent="#9a7b2d" style="--sw:#9a7b2d" onclick="setAccent('#9a7b2d',this)" title="金赭">金</button>
+        <button data-accent="#3b4a6b" style="--sw:#3b4a6b" onclick="setAccent('#3b4a6b',this)" title="靛藍">靛</button>
+      </div>
+      <h4>紙色 <span>paper</span></h4>
+      <div class="pill-row" id="paper-row">
+        <button data-paper="cream" onclick="setPaper('cream',this)">米紙</button>
+        <button data-paper="white" onclick="setPaper('white',this)">月白</button>
+        <button data-paper="night" onclick="setPaper('night',this)">夜</button>
+      </div>
+      <h4>字體大小</h4>
+      <div class="pill-row" id="font-row">
+        <button data-fs="std" onclick="setFontSize('std',this)">標準</button>
+        <button data-fs="large" onclick="setFontSize('large',this)">大字</button>
+      </div>
+      <h4>標題字 <span>serif / sans</span></h4>
+      <div class="pill-row" id="headfont-row">
+        <button data-hf="serif" onclick="setHeadFont('serif',this)">明朝襯線</button>
+        <button data-hf="sans" onclick="setHeadFont('sans',this)">黑體俐落</button>
+      </div>
+    </div>
+
+    <div id="s-pane-layout" class="s-pane" style="display:none">
+      <h4>欄位方向</h4>
+      <div class="pill-row" id="dir-row">
+        <button data-dir="left" onclick="setLayoutDir('left',this)">左時程 · 右焦點</button>
+        <button data-dir="swap" onclick="setLayoutDir('swap',this)">左右互換</button>
+      </div>
+      <h4>顯示卡片</h4>
+      <div class="toggle-list">
+        <label><input type="checkbox" id="tg-cover" checked onchange="toggleCard('cover',this.checked)" /> 今日焦點</label>
+        <label><input type="checkbox" id="tg-detox" checked onchange="toggleCard('detox',this.checked)" /> 解癮替代</label>
+        <label><input type="checkbox" id="tg-rules" checked onchange="toggleCard('rules',this.checked)" /> 關鍵機制</label>
+        <label><input type="checkbox" id="tg-nextbadge" checked onchange="toggleCard('nextbadge',this.checked)" /> 下一枚勳章</label>
+      </div>
+      <h4>資訊密度</h4>
+      <div class="pill-row" id="density-row">
+        <button data-density="cozy" onclick="setDensity('cozy',this)">舒適</button>
+        <button data-density="compact" onclick="setDensity('compact',this)">緊湊</button>
+      </div>
+    </div>
+
+    <div id="s-pane-badges" class="s-pane" style="display:none">
+      <p class="modal-sub">每條成就有多個階段，完成後自動晉級；後段會無限延伸，適合長期養成。點擊進度可看下一階門檻。</p>
+      <div class="badge-summary" id="badge-summary"></div>
+      <div id="badges-grid" class="badge-tracks"></div>
+    </div>
+
+    <div id="s-pane-data" class="s-pane" style="display:none">
+      <h4>帳號同步 <span>google login · firestore</span></h4>
+      <div class="account-box">
+        <p class="modal-sub" id="account-status" style="margin:0 0 10px">尚未登入，資料只存在這台裝置。登入後手機、電腦同帳號自動同步。</p>
+        <div class="pill-row">
+          <button id="account-login-btn" onclick="signInWithGoogle()">Google 登入</button>
+          <button id="account-logout-btn" onclick="signOutUser()" style="display:none">登出</button>
+          <button onclick="pushCloudNow()">立即同步</button>
+        </div>
+      </div>
+      <h4>本日管理</h4>
+      <div class="pill-row">
+        <button onclick="restoreHidden()">還原今日略過的任務</button>
+        <button onclick="clearToday()">清空今日勾選</button>
+      </div>
+      <h4>全部資料</h4>
+      <div class="pill-row">
+        <button onclick="exportData()">匯出備份</button>
+        <button onclick="document.getElementById('import-file').click()">匯入備份</button>
+        <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importData(event)" />
+        <button class="danger" onclick="resetAll()">全部重置</button>
+      </div>
+      <p class="modal-sub">未登入時，勾選、成就、自訂任務與外觀設定都存在這台瀏覽器；登入後自動同步到雲端。</p>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="./app.js"></script>
+<script src="./sync.js"></script>
+</body>
+</html>
